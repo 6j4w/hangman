@@ -6,7 +6,12 @@ static ALPHA_LOWER: [char; 26] = [
 ];
 fn main() {
     println!("Welcome! Let's play hangman!");
-    let word = "hello".to_string();
+    let mut word: Vec<(char, usize, Status)> = vec![
+        ('h', 0, Status::NOTFOUND),
+        ('e', 1, Status::NOTFOUND),
+        ('e', 2, Status::NOTFOUND),
+        ('l', 3, Status::NOTFOUND),
+    ];
     let mut guess: String = String::new();
 
     loop {
@@ -20,12 +25,15 @@ fn main() {
         if !ALPHA_LOWER.contains(&guess.chars().next().unwrap()) {
             eprintln!("Not a valid character. ");
         }
-
-        if word.contains(guess.chars().next().unwrap()) {
-            println!("[+]");
-            println!("_ _ {guess} _");
-        } else {
-            println!("[-]");
+        for (c, index, _) in &word {
+            if c == &guess.chars().next().unwrap() {
+                word[index].3 = Status::FOUND;
+            }
         }
     }
+}
+
+enum Status {
+    FOUND,
+    NOTFOUND,
 }
