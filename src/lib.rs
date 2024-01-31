@@ -1,13 +1,7 @@
-use std::{ fs, io };
+use std::{ fs, io, process };
 use rand::Rng;
 
-#[derive(PartialEq)]
-pub enum Status {
-    FOUND,
-    NOTFOUND,
-}
-
-pub static ALPHA_LOWER: [char; 26] = [
+static ALPHA_LOWER: [char; 26] = [
     'a',
     'b',
     'c',
@@ -36,6 +30,13 @@ pub static ALPHA_LOWER: [char; 26] = [
     'z',
 ];
 
+// public
+#[derive(PartialEq)]
+pub enum Status {
+    FOUND,
+    NOTFOUND,
+}
+
 // basic structure for the game
 pub struct GameData {
     pub lives: usize,
@@ -54,18 +55,38 @@ pub fn clear_screen() {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
 }
 
-pub fn get_input() -> char {
+pub fn fatal_error(err: &str) {
+    eprintln!("{err}");
+    process::exit(1);
+}
+
+pub fn get_input() -> Result<char, &'static str> {
     let mut guess: String = "".to_string();
 
     print!("Guess: ");
     io::stdin().read_line(&mut guess).expect("Input went wrong");
 
-    guess.trim().to_lowercase().chars().next().expect("Input went wrong")
+    match guess.trim().to_lowercase().chars().next() {
+        Some(t) => Ok(t),
+        None => Err("Error occured while parsing guess."),
+    }
 }
 
-pub fn build_game_data() -> GameData {
-    let word = get_readable();
-    GameData {
+pub fn validate_guess(guess: &char) -> bool {
+    if ALPHA_LOWER.contains(guess) {
+        return true;
+    }
+    false
+}
+
+pub fn build_game_data() -> Result<GameData, &'static str> {
+    let word = match get_readable() {
+        Ok(t) => t,
+        Err(_) => {
+            return Err("Error while retrieving word.");
+        }
+    };
+    Ok(GameData {
         lives: 9,
         found_letters: 0,
         wrong_letters: Vec::new(), // <- this is for letters that were  wrong
@@ -76,33 +97,33 @@ pub fn build_game_data() -> GameData {
 
         word_readable: word.clone(),
         word: readable_to_word(word),
-    }
+    })
 }
 
 pub fn check_ended(game_data: &mut GameData) {
     if game_data.word.iter().all(|(_, status)| *status == Status::FOUND) {
         game_data.ended = true;
-        game_data.ended_msg = "You Win!".to_string();
+        game_data.ended_msg = "You win!".to_string();
     } else if game_data.lives == 0 {
         game_data.ended = true;
         game_data.ended_msg = "You lose...".to_string();
     }
+    if game_data.ended {
+        outro(&game_data)
+    }
 }
 
-pub fn outro(game_data: &GameData) {
-    clear_screen();
-    println!("\n{0}", game_data.ended_msg);
-    println!("The word was: {0}", game_data.word_readable);
-    println!("You have {} lives out of 9 left", game_data.lives);
-    println!("Good game!");
-}
+// private
 
-fn get_readable() -> String {
-    let contents = fs::read_to_string("words.dic").expect("Wordlist not readable");
+fn get_readable() -> Result<String, &'static str> {
+    let contents = fs::read_to_string("words.dic").expect("Wordlist inacessible.");
     let mut lines = contents.lines();
     let rand_num = rand::thread_rng().gen_range(0..lines.clone().count());
 
-    lines.nth(rand_num).expect("Retreiving random word didn't word").to_string()
+    match lines.nth(rand_num) {
+        Some(t) => Ok(t.to_string()),
+        None => Err("Error retrieving word. Perhaps the wordlist is not accessible?"),
+    }
 }
 
 fn readable_to_word(word_readable: String) -> Vec<(char, Status)> {
@@ -113,4 +134,12 @@ fn readable_to_word(word_readable: String) -> Vec<(char, Status)> {
     }
 
     output
+}
+
+fn outro(game_data: &GameData) {
+    clear_screen();
+    println!("\n{0}", game_data.ended_msg);
+    println!("The word was: {0}", game_data.word_readable);
+    println!("You have {} lives out of 9 left", game_data.lives);
+    println!("Good game!");
 }

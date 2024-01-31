@@ -1,10 +1,26 @@
-use hangman::{ build_game_data, check_ended, outro, clear_screen, get_input, Status, ALPHA_LOWER };
+use hangman::{
+    build_game_data,
+    check_ended,
+    clear_screen,
+    get_input,
+    validate_guess,
+    GameData,
+    Status,
+};
+
+use std::process;
 
 fn main() {
     let mut guess: char;
     let mut err: &str = "";
 
-    let mut game_data = build_game_data();
+    let mut game_data: GameData = match build_game_data() {
+        Ok(t) => t,
+        Err(e) => {
+            println!("{e}");
+            process::exit(1);
+        }
+    };
 
     println!("Welcome! Let's play hangman!");
     loop {
@@ -13,7 +29,6 @@ fn main() {
         check_ended(&mut game_data);
 
         if game_data.ended {
-            outro(&game_data);
             break;
         }
 
@@ -29,13 +44,20 @@ fn main() {
             print!("{} ", if *status == Status::FOUND { char } else { &'_' });
         }
 
-        println!("\nYou have guessed: {:?} ", game_data.wrong_letters);
+        println!("\nYou have tried: {:?} ", game_data.wrong_letters);
         println!("\n\nGuess: ");
 
-        guess = get_input();
+        guess = match get_input() {
+            Ok(t) => t,
+            Err(e) => {
+                err = e;
+                continue;
+            }
+        };
 
-        if !ALPHA_LOWER.contains(&guess) {
-            eprintln!("Not a valid character.");
+        if !validate_guess(&guess) {
+            err = "Guess not valid.";
+            continue;
         }
 
         if game_data.guessed_letters.iter().any(|c| c == &guess) {
@@ -56,5 +78,7 @@ fn main() {
         } else {
             0
         };
+
+        game_data.guessed_letters.push(guess);
     }
 }
