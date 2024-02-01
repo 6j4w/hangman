@@ -1,4 +1,4 @@
-use hangman::{
+use sadman::{
     build_game_data,
     check_ended,
     clear_screen,
@@ -34,9 +34,11 @@ fn main() {
 
         clear_screen();
 
-        println!("\n{}", err);
-        err = "";
-
+        println!("Sadman v1\n");
+        if !err.is_empty() {
+            println!("{}", err);
+            err = "";
+        }
         println!("Lives: {}", game_data.lives);
 
         for (char, status) in &game_data.word {
